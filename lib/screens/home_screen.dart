@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -8,6 +10,57 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const twentyFiveMinutes = 1500;
+  int totalSeconds = twentyFiveMinutes;
+  bool isRunning = false;
+  int totalPomodoros = 0;
+  late Timer timer;
+
+  void onTick(Timer timer) {
+    if (totalSeconds == 0) {
+      setState(() {
+        totalPomodoros = totalPomodoros + 1;
+        isRunning = false;
+        totalSeconds = twentyFiveMinutes;
+      });
+      timer.cancel();
+    } else {
+      setState(() {
+        totalSeconds = totalSeconds - 1;
+      });
+    }
+  }
+
+  void onStartPressed() {
+    timer = Timer.periodic(
+      const Duration(seconds: 1),
+      onTick,
+    );
+    setState(() {
+      isRunning = true;
+    });
+  }
+
+  void onPausePressed() {
+    timer.cancel();
+    setState(() {
+      isRunning = false;
+    });
+  }
+
+  void onResetPressed() {
+    timer.cancel();
+    setState(() {
+      isRunning = false;
+      totalSeconds = twentyFiveMinutes;
+    });
+  }
+
+  String format(int seconds) {
+    var duration = Duration(seconds: seconds);
+    return duration.toString().split(".").first.substring(2, 7);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,9 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
               flex: 1,
               child: Container(
                 alignment: Alignment.bottomCenter,
-                child: const Text(
-                  '25:00',
-                  style: TextStyle(
+                child: Text(
+                  format(totalSeconds),
+                  style: const TextStyle(
                     // color: Theme.of(context).textTheme.displayLarge.color,
                     fontSize: 80,
                     fontWeight: FontWeight.w600,
@@ -31,11 +84,26 @@ class _HomeScreenState extends State<HomeScreen> {
             Flexible(
               flex: 3,
               child: Center(
-                child: IconButton(
-                  onPressed: () {},
-                  iconSize: 120,
-                  color: Theme.of(context).cardColor,
-                  icon: const Icon(Icons.play_circle_outline),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: isRunning ? onPausePressed : onStartPressed,
+                      iconSize: 120,
+                      color: Theme.of(context).cardColor,
+                      icon: Icon(
+                        isRunning
+                            ? Icons.pause_circle_outline
+                            : Icons.play_circle_outline,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onResetPressed,
+                      iconSize: 50,
+                      color: Theme.of(context).cardColor,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -45,12 +113,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Expanded(
                     child: Container(
-                      decoration:
-                          BoxDecoration(color: Theme.of(context).cardColor),
-                      child: const Column(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
+                          const Text(
                             'Pomodoros',
                             style: TextStyle(
                               fontSize: 20,
@@ -63,8 +133,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           Text(
-                            '0',
-                            style: TextStyle(
+                            '$totalPomodoros',
+                            style: const TextStyle(
                               fontSize: 58,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF232B55),

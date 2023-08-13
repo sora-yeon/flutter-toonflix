@@ -1,153 +1,93 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:toonflix/models/webtoon_model.dart';
+import 'package:toonflix/services/api_service.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatelessWidget {
+  HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  static const twentyFiveMinutes = 1500;
-  int totalSeconds = twentyFiveMinutes;
-  bool isRunning = false;
-  int totalPomodoros = 0;
-  late Timer timer;
-
-  void onTick(Timer timer) {
-    if (totalSeconds == 0) {
-      setState(() {
-        totalPomodoros = totalPomodoros + 1;
-        isRunning = false;
-        totalSeconds = twentyFiveMinutes;
-      });
-      timer.cancel();
-    } else {
-      setState(() {
-        totalSeconds = totalSeconds - 1;
-      });
-    }
-  }
-
-  void onStartPressed() {
-    timer = Timer.periodic(
-      const Duration(seconds: 1),
-      onTick,
-    );
-    setState(() {
-      isRunning = true;
-    });
-  }
-
-  void onPausePressed() {
-    timer.cancel();
-    setState(() {
-      isRunning = false;
-    });
-  }
-
-  void onResetPressed() {
-    timer.cancel();
-    setState(() {
-      isRunning = false;
-      totalSeconds = twentyFiveMinutes;
-    });
-  }
-
-  String format(int seconds) {
-    var duration = Duration(seconds: seconds);
-    return duration.toString().split(".").first.substring(2, 7);
-  }
+  final Future<List<WebtoonModel>> webtoons = ApiService.getTodaysToons();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.background,
-        body: Column(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          "오늘의 웹툰",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        foregroundColor: Colors.green,
+        backgroundColor: Colors.white,
+        elevation: 2,
+      ),
+      body: FutureBuilder(
+        future: webtoons,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return Column(
+              children: [
+                const SizedBox(
+                  height: 50,
+                ),
+                Expanded(child: makeList(snapshot))
+                // listview는 어떤 높이를 갖는지 모르기 때문에, Expanded로 공간을 만든다
+              ],
+            );
+          }
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      ),
+    );
+  }
+
+  ListView makeList(AsyncSnapshot<List<WebtoonModel>> snapshot) {
+    return ListView.separated(
+      // 사용자가 보는 화면만 메모리에 들고있음
+      // 모든 아이템을 한번에 만들지 않고, 만들려는 아이템을 builder로 만든다.
+      scrollDirection: Axis.horizontal,
+      itemCount: snapshot.data!.length,
+      padding: const EdgeInsets.symmetric(
+        vertical: 10,
+        horizontal: 20,
+      ),
+      itemBuilder: (context, index) {
+        var webtoon = snapshot.data![index];
+        return Column(
           children: [
-            Flexible(
-              flex: 1,
-              child: Container(
-                alignment: Alignment.bottomCenter,
-                child: Text(
-                  format(totalSeconds),
-                  style: const TextStyle(
-                    // color: Theme.of(context).textTheme.displayLarge.color,
-                    fontSize: 80,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            Container(
+              width: 250,
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 15,
+                      offset: const Offset(10, 10),
+                      color: Colors.black.withOpacity(0.3),
+                    )
+                  ]),
+              clipBehavior: Clip.hardEdge,
+              child: Image.network(webtoon.thumb),
             ),
-            Flexible(
-              flex: 3,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: isRunning ? onPausePressed : onStartPressed,
-                      iconSize: 120,
-                      color: Theme.of(context).cardColor,
-                      icon: Icon(
-                        isRunning
-                            ? Icons.pause_circle_outline
-                            : Icons.play_circle_outline,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: onResetPressed,
-                      iconSize: 50,
-                      color: Theme.of(context).cardColor,
-                      icon: const Icon(Icons.restart_alt_rounded),
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(
+              height: 10,
             ),
-            Flexible(
-              flex: 1,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Pomodoros',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              // color: Theme.of(context)
-                              //     .textTheme
-                              //     .displayLarge!
-                              //     .color),
-                              color: Color(0xFF232B55),
-                            ),
-                          ),
-                          Text(
-                            '$totalPomodoros',
-                            style: const TextStyle(
-                              fontSize: 58,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF232B55),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            Text(
+              webtoon.title,
+              style: const TextStyle(
+                fontSize: 22,
               ),
             ),
           ],
-        ));
+        );
+      },
+      separatorBuilder: (context, index) => const SizedBox(
+        width: 40,
+      ),
+    );
   }
 }

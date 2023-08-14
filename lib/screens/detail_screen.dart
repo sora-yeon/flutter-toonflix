@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toonflix/models/webtoon_detail_model.dart';
 import 'package:toonflix/models/webtoon_episode_model.dart';
 import 'package:toonflix/services/api_service.dart';
+import 'package:toonflix/widgets/episode_widget.dart';
 
 class DetailScreen extends StatefulWidget {
   final String title, thumb, id;
@@ -22,6 +24,39 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   late Future<WebtoonDetailModel> webtoon;
   late Future<List<WebtoonEpisodeModel>> episodes;
+  late SharedPreferences prefs;
+  final String sharedPrefenceKeyLikedToons = 'likedToons';
+  bool isLiked = false;
+
+  Future initPrefs() async {
+    prefs = await SharedPreferences.getInstance();
+    final likeToons = prefs.getStringList(sharedPrefenceKeyLikedToons);
+    if (likeToons != null) {
+      if (likeToons.contains(widget.id) == true) {
+        setState(() {
+          isLiked = true;
+        });
+      }
+    } else {
+      await prefs.setStringList(sharedPrefenceKeyLikedToons, []);
+    }
+  }
+
+  void onPressed() async {
+    final likeToons = prefs.getStringList(sharedPrefenceKeyLikedToons);
+
+    if (likeToons != null) {
+      if (isLiked) {
+        likeToons.remove(widget.id);
+      } else {
+        likeToons.add(widget.id);
+      }
+      await prefs.setStringList(sharedPrefenceKeyLikedToons, likeToons);
+      setState(() {
+        isLiked = !isLiked;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -29,6 +64,7 @@ class _DetailScreenState extends State<DetailScreen> {
     webtoon = ApiService.getToonById(widget.id);
     episodes = ApiService.getLatestEpisodesById(
         widget.id); // 10개의 에피소드만 가져옴. Column으로 커버 가능함
+    initPrefs();
   }
 
   @override
@@ -47,6 +83,14 @@ class _DetailScreenState extends State<DetailScreen> {
         foregroundColor: Colors.green,
         backgroundColor: Colors.white,
         elevation: 2,
+        actions: [
+          IconButton(
+            onPressed: onPressed,
+            icon: Icon(isLiked
+                ? Icons.favorite_rounded
+                : Icons.favorite_outline_outlined),
+          )
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -116,41 +160,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     return Column(
                       children: [
                         for (var episode in snapshot.data!)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade400,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  blurRadius: 10,
-                                  offset: const Offset(5, 5),
-                                  color: Colors.black.withOpacity(0.3),
-                                )
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 10,
-                                horizontal: 20,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(episode.title,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      )),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: Colors.white,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
+                          Episode(episode: episode, webtoonId: widget.id)
                       ],
                     );
                   }
